@@ -1,0 +1,7 @@
+{
+  "name": "bind-status-page",
+  "private": true,
+  "description": "Página pública de estado de las APIs de BIND PSP (Vercel). Recibe el estado ya saneado desde el monitor de la VM.",
+  "engines": { "node": ">=20" },
+  "dependencies": { "@vercel/blob": "2.8.0" }
+}

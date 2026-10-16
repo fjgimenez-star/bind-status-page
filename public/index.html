@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estado de las APIs · BIND PSP</title>
+<meta name="description" content="Estado en tiempo real de las APIs de BIND PSP por producto y endpoint.">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #16191d; --muted: #5b6470; --line: #e3e6ea; --soft: #f0f2f5;
+  --ok: #138a4b; --ok-bg: #e6f5ec; --warn: #b35c00; --warn-bg: #fff2e0; --err: #c42b1c; --err-bg: #fdecea; --nv: #6b7280; --nv-bg: #eef0f3;
+  --bar-ok: #2fb36b; --bar-lento: #f0a030; --bar-falla: #dd4b39; --bar-nv: #c9ced6; --bar-vacio: #e9ecef;
+  --accent: #0b5cad; --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --panel: #171b21; --text: #e8eaed; --muted: #9aa3ad; --line: #2a3038; --soft: #1e232a;
+    --ok: #4fd18b; --ok-bg: #12301f; --warn: #f3a54a; --warn-bg: #352512; --err: #ff7a6b; --err-bg: #3a1714; --nv: #a3aab4; --nv-bg: #232830;
+    --bar-ok: #36b56f; --bar-lento: #e39a2f; --bar-falla: #e35a49; --bar-nv: #4a515b; --bar-vacio: #262c33; --accent: #6fb0ff;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --panel: #171b21; --text: #e8eaed; --muted: #9aa3ad; --line: #2a3038; --soft: #1e232a;
+  --ok: #4fd18b; --ok-bg: #12301f; --warn: #f3a54a; --warn-bg: #352512; --err: #ff7a6b; --err-bg: #3a1714; --nv: #a3aab4; --nv-bg: #232830;
+  --bar-ok: #36b56f; --bar-lento: #e39a2f; --bar-falla: #e35a49; --bar-nv: #4a515b; --bar-vacio: #262c33; --accent: #6fb0ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.contenedor { max-width: 980px; margin: 0 auto; padding: 28px 16px 48px; }
+body.embed .contenedor { padding: 8px 8px 12px; max-width: none; }
+header.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.vivo { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--nv); display: inline-block; }
+.vivo.on i { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulso 2s infinite; }
+@keyframes pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .vivo.on i { animation: none; } }
+.banner { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: var(--radius); margin-bottom: 22px; border: 1px solid transparent; }
+.banner .icono { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; flex: none; }
+.banner strong { font-size: 18px; display: block; }
+.banner span { color: var(--muted); font-size: 13px; }
+.e-operativo { --c: var(--ok); --cb: var(--ok-bg); }
+.e-degradado { --c: var(--warn); --cb: var(--warn-bg); }
+.e-con_errores { --c: var(--err); --cb: var(--err-bg); }
+.e-no_verificado { --c: var(--nv); --cb: var(--nv-bg); }
+.banner { background: var(--cb); border-color: color-mix(in srgb, var(--c) 30%, transparent); }
+.banner .icono { background: var(--c); }
+.producto { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+.producto > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 16px 18px; }
+.producto > summary::-webkit-details-marker { display: none; }
+.producto > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.producto h2 { font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.producto h2 .flecha { transition: transform .15s; color: var(--muted); font-size: 12px; }
+.producto[open] h2 .flecha { transform: rotate(90deg); }
+.producto .desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--c); background: var(--cb); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.cuenta { color: var(--muted); font-size: 12px; text-align: right; margin-top: 4px; }
+.endpoints { border-top: 1px solid var(--line); }
+.ep { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.ep:last-child { border-bottom: 0; }
+.ep .nombre { font-weight: 600; font-size: 14px; }
+.ep .ruta { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.metodo { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--soft); color: var(--text); margin-right: 6px; }
+.ep .der { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ep .datos { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ep .nota { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.barras { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(60, 1fr); gap: 2px; height: 22px; margin-top: 2px; }
+.barras b { border-radius: 2px; background: var(--bar-vacio); }
+.barras b.o { background: var(--bar-ok); } .barras b.l { background: var(--bar-lento); } .barras b.f { background: var(--bar-falla); } .barras b.n { background: var(--bar-nv); }
+.leyenda-barras { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+section.bloque { margin-top: 28px; }
+section.bloque h3 { font-size: 16px; margin: 0 0 10px; }
+.incidente { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+.incidente .t { font-weight: 600; font-size: 14px; }
+.incidente .m { color: var(--muted); font-size: 12px; }
+.vacio { color: var(--muted); font-size: 14px; padding: 12px 0; }
+.leyenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.leyenda div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--muted); }
+.leyenda .pill { margin-bottom: 4px; }
+footer { margin-top: 28px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.error-carga { background: var(--nv-bg); border-radius: var(--radius); padding: 16px; color: var(--muted); }
+.esqueleto { height: 64px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); margin-bottom: 14px; }
+@media (max-width: 560px) {
+  h1 { font-size: 22px; }
+  .ep { grid-template-columns: 1fr; }
+  .ep .der { align-items: flex-start; text-align: left; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .barras { grid-template-columns: repeat(30, 1fr); }
+  .barras b:nth-child(-n+30) { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <header class="top" id="cabecera">
+    <div>
+      <h1>Estado de las APIs</h1>
+      <div class="sub" id="sub">BIND PSP</div>
+    </div>
+    <div class="vivo" id="vivo" aria-live="polite"><i></i><span>Conectando…</span></div>
+  </header>
+  <div id="banner" class="banner e-no_verificado" role="status" aria-live="polite">
+    <div class="icono">…</div><div><strong>Cargando estado…</strong><span>&nbsp;</span></div>
+  </div>
+  <div id="productos"><div class="esqueleto"></div><div class="esqueleto"></div><div class="esqueleto"></div></div>
+  <section class="bloque" id="bloque-incidentes">
+    <h3>Incidentes recientes</h3>
+    <div id="incidentes"><div class="vacio">—</div></div>
+  </section>
+  <section class="bloque" id="bloque-leyenda">
+    <h3>Qué significa cada estado</h3>
+    <div class="leyenda">
+      <div><span class="pill e-operativo">Operativo</span><br>El endpoint responde correctamente y dentro de los tiempos esperados.</div>
+      <div><span class="pill e-degradado">Degradado</span><br>Responde, pero con demoras sostenidas o con algunos endpoints del producto afectados.</div>
+      <div><span class="pill e-con_errores">Con errores</span><br>Falló en verificaciones consecutivas. Estamos trabajando en resolverlo.</div>
+      <div><span class="pill e-no_verificado">No verificado</span><br>No pudimos verificarlo (configuración del monitor). No implica que el servicio esté fallando.</div>
+    </div>
+  </section>
+  <footer>
+    <span id="pie">—</span>
+    <span>Historial de las últimas 60 verificaciones por endpoint.</span>
+  </footer>
+</div>
+<script>window.MON_API = '/api/estado'; window.MON_SIN_STREAM = true;</script>
+<script>
+(function () {
+  'use strict';
+  var params = new URLSearchParams(location.search);
+  var EMBED = params.get('embed') === '1';
+  var SOLO = params.get('producto');
+  var API = params.get('api') || window.MON_API || 'api/publico/estado';
+  var STREAM = window.MON_STREAM || 'api/publico/stream';
+  if (params.get('tema') === 'claro') document.documentElement.setAttribute('data-theme', 'light');
+  if (params.get('tema') === 'oscuro') document.documentElement.setAttribute('data-theme', 'dark');
+  if (EMBED) {
+    document.body.classList.add('embed');
+    document.getElementById('cabecera').style.display = 'none';
+    document.getElementById('bloque-leyenda').style.display = 'none';
+  }
+  var ICONOS = { operativo: '✓', degradado: '!', con_errores: '✕', no_verificado: '?' };
+  var TITULOS = {
+    operativo: 'Todos los servicios operativos',
+    degradado: 'Algunos servicios presentan inconvenientes',
+    con_errores: 'Servicios con errores',
+    no_verificado: 'Sin información suficiente para determinar el estado'
+  };
+  var abiertos = {};
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hace(iso) {
+    if (!iso) return 'sin verificar';
+    var s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+    if (s < 60) return 'hace instantes';
+    if (s < 3600) return 'hace ' + Math.round(s / 60) + ' min';
+    if (s < 86400) return 'hace ' + Math.round(s / 3600) + ' h';
+    return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+  function fecha(iso) { return iso ? new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; }
+  function duracion(a, b) {
+    var m = Math.round(((b ? Date.parse(b) : Date.now()) - Date.parse(a)) / 60000);
+    return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
+  }
+  function barras(str) {
+    var celdas = [];
+    var s = str || '';
+    for (var i = 0; i < 60 - s.length; i++) celdas.push('<b></b>');
+    for (var j = 0; j < s.length; j++) celdas.push('<b class="' + s[j] + '"></b>');
+    return '<div class="barras" aria-hidden="true">' + celdas.join('') + '</div>';
+  }
+  function pct(x) { return x == null ? '—' : (x >= 99.995 ? '100' : x.toFixed(2).replace('.', ',')) + '%'; }
+  function render(d) {
+    document.getElementById('sub').textContent = 'BIND PSP · Ambiente: ' + d.ambiente;
+    var b = document.getElementById('banner');
+    var est = d.plataforma.estado;
+    var productos = d.productos.filter(function (p) { return !SOLO || p.id === SOLO; });
+    if (SOLO && productos[0]) est = productos[0].estado;
+    b.className = 'banner e-' + est;
+    if (d.desactualizado) { b.className = 'banner e-no_verificado'; b.innerHTML = '<div class="icono">?</div><div><strong>Sin datos recientes del monitor</strong><span>Último envío: ' + esc(fecha(d.recibido || d.generado)) + '. El estado se mostrará cuando vuelva a reportar.</span></div>'; }
+    else b.innerHTML = '<div class="icono">' + ICONOS[est] + '</div><div><strong>' + esc(SOLO && productos[0] ? productos[0].nombre + ': ' + productos[0].etiqueta : TITULOS[est]) + '</strong><span>Última verificación: ' + esc(hace(d.ultimaActualizacion)) + (d.ultimaActualizacion ? ' · ' + esc(fecha(d.ultimaActualizacion)) : '') + '</span></div>';
+    var html = productos.map(function (p) {
+      var ok = p.endpoints.filter(function (e) { return e.estado === 'operativo'; }).length;
+      var abierto = abiertos[p.id] !== undefined ? abiertos[p.id] : (p.estado !== 'operativo' || !!SOLO);
+      var eps = p.endpoints.map(function (e) {
+        var datos = [];
+        if (e.ms != null) datos.push(e.ms + ' ms');
+        if (e.disponibilidad24h != null) datos.push(pct(e.disponibilidad24h) + ' (24 h)');
+        return '<div class="ep">' +
+          '<div><div class="nombre">' + esc(e.nombre) + '</div>' +
+          (e.ruta ? '<div class="ruta">' + (e.metodo ? '<span class="metodo">' + esc(e.metodo) + '</span>' : '') + esc(e.ruta) + '</div>' : '') + '</div>' +
+          '<div class="der"><span class="pill e-' + e.estado + '">' + esc(e.etiqueta) + '</span><span class="datos">' + esc(datos.join(' · ') || '—') + '</span><span class="datos" title="' + esc(e.ultimaVerificacion || '') + '">' + esc(hace(e.ultimaVerificacion)) + '</span></div>' +
+          (e.nota ? '<div class="nota">' + esc(e.nota) + '</div>' : '') +
+          barras(e.barras) +
+          '<div class="leyenda-barras"><span>más antiguo</span><span>' + (e.disponibilidad7d != null ? 'Disponibilidad 7 días: ' + pct(e.disponibilidad7d) : '') + '</span><span>ahora</span></div>' +
+          '</div>';
+      }).join('');
+      return '<details class="producto e-' + p.estado + '" data-id="' + esc(p.id) + '"' + (abierto ? ' open' : '') + '>' +
+        '<summary><div><h2><span class="flecha">▶</span>' + esc(p.nombre) + (p.nombreCorto ? ' <span style="color:var(--muted);font-weight:500">(' + esc(p.nombreCorto) + ')</span>' : '') + '</h2><div class="desc">' + esc(p.descripcion || '') + '</div></div>' +
+        '<div><span class="pill e-' + p.estado + '">' + esc(p.etiqueta) + '</span><div class="cuenta">' + ok + ' de ' + p.endpoints.length + ' operativos</div></div></summary>' +
+        '<div class="endpoints">' + (eps || '<div class="ep"><div class="vacio">Sin endpoints monitoreados todavía.</div></div>') + '</div></details>';
+    }).join('');
+    var cont = document.getElementById('productos');
+    cont.innerHTML = html;
+    cont.querySelectorAll('details').forEach(function (el) { el.addEventListener('toggle', function () { abiertos[el.dataset.id] = el.open; }); });
+    var incs = d.incidentes.filter(function (i) { return !SOLO || (productos[0] && i.producto === productos[0].nombre); });
+    document.getElementById('incidentes').innerHTML = incs.length ? incs.slice(0, 30).map(function (i) {
+      return '<div class="incidente e-' + (i.resuelto ? 'operativo' : i.tipo) + '"><div class="t">' + esc(i.titulo) + '</div><div class="m">' + esc(i.producto) + ' · ' +
+        (i.resuelto ? 'Resuelto · duró ' + esc(duracion(i.inicio, i.fin)) + ' · ' + esc(fecha(i.inicio)) + ' a ' + esc(fecha(i.fin)) : 'En curso desde ' + esc(fecha(i.inicio)) + ' (' + esc(duracion(i.inicio)) + ')') + '</div></div>';
+    }).join('') : '<div class="vacio">No hubo incidentes en los últimos días.</div>';
+    document.getElementById('pie').textContent = 'Se verifica cada ' + Math.round(d.frecuenciaSegundos / 60) + ' min · Actualizado ' + fecha(d.generado);
+  }
+  var vivo = document.getElementById('vivo');
+  function marcarVivo(on, txt) { vivo.className = 'vivo' + (on ? ' on' : ''); vivo.querySelector('span').textContent = txt; }
+  var cargando = false;
+  function cargar() {
+    if (cargando) return; cargando = true;
+    fetch(API, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { render(d); if (!es) marcarVivo(true, 'Actualización automática'); })
+      .catch(function () {
+        if (API !== 'estado.json' && !window.MON_API && !params.get('api')) { API = 'estado.json'; cargando = false; return cargar(); }
+        document.getElementById('productos').innerHTML = '<div class="error-carga">No se pudo obtener el estado en este momento. Se reintenta automáticamente.</div>';
+        marcarVivo(false, 'Sin conexión');
+      })
+      .finally(function () { cargando = false; });
+  }
+  var es = null;
+  function conectar() {
+    if (!window.EventSource || window.MON_SIN_STREAM) return;
+    try {
+      es = new EventSource(STREAM);
+      es.addEventListener('open', function () { marcarVivo(true, 'En vivo'); });
+      es.addEventListener('actualizado', cargar);
+      es.addEventListener('error', function () { marcarVivo(true, 'Actualización automática'); });
+    } catch (e) { es = null; }
+  }
+  cargar();
+  conectar();
+  setInterval(cargar, 60000);
+  // En modo embebido informa la altura al contenedor (para iframes que se ajustan solos).
+  if (EMBED && window.parent !== window) {
+    var avisar = function () { window.parent.postMessage({ tipo: 'bind-status-altura', altura: document.documentElement.scrollHeight }, '*'); };
+    new ResizeObserver(avisar).observe(document.body);
+  }
+})();
+</script>
+</body>
+</html>
